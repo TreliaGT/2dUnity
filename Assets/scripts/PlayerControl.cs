@@ -18,6 +18,7 @@ public class PlayerControl : MonoBehaviour
 
     Vector2 finalMovement;
     bool runMovement = false;
+    Animator Animator; 
 
     [Header("Vertical Movement")]
     public float upforce = 5;
@@ -33,11 +34,18 @@ public class PlayerControl : MonoBehaviour
 
     [Header("Collision Handling")]
     Collider2D CurrentGround;
+    Collider2D LeftWall;
+    Collider2D RightWall;
+    public bool WallRight = false;
+    public bool WallLeft = false;
+
+
 
     // Start is called before the first frame update
     void Start()
     {
         _rigitbody = GetComponent<Rigidbody2D>();
+        Animator = GetComponent<Animator>();
     }
 
     // Update is called once per frame
@@ -52,10 +60,12 @@ public class PlayerControl : MonoBehaviour
         if(HorizontalInput != 0 && LastHorizontalInput == 0)
         {
             moving = true;
+            Animator.SetBool("Moving", true);
         }
         if(HorizontalInput == 0 && LastHorizontalInput != 0)
         {
             moving = false;
+            Animator.SetBool("Moving", false);
         }
         if(HorizontalInput > 0f && !facingRight || HorizontalInput < 0f && facingRight)
         {
@@ -80,6 +90,8 @@ public class PlayerControl : MonoBehaviour
     {
         if (inAir)
         {
+            Animator.SetTrigger("Jump");
+            Animator.SetBool("inAir", true);
             return;
         }
         inAir = true;
@@ -125,6 +137,10 @@ public class PlayerControl : MonoBehaviour
         {
             SetMovement();
             currentMove = HorizontalInput * movespeed;
+            if(currentMove > 0f && RightWall || currentMove < 0f && WallLeft || WallLeft && WallRight)
+            {
+                currentMove = 0;
+            }
             finalMovement.x = currentMove;
         }
         if (runMovement)
@@ -149,10 +165,28 @@ public class PlayerControl : MonoBehaviour
        // Debug.DrawRay(Coll.pointA, Coll.normal, Color.black , 1f);
         if (collision.collider.tag == "Enviro")
         {
-            if (Coll.normal.y > 0.1f)
+            if (Coll.normal.y > 0.1f)//Ground
             {
                 Ground(collision.collider);
+
             }
+
+            if (Coll.normal.y < -0.1f )//roof
+            {
+                currentGravity = 0;
+                jumpHeld = false;
+            }
+            if (Coll.normal.x < -0.9f)// works with straight walls right wall
+            {
+                WallRight = true;
+                RightWall = collision.collider;
+            }
+            if (Coll.normal.x > 0.9f)//left wall
+            {
+                WallLeft = true;
+                LeftWall = collision.collider;
+            }
+
         }
     }
 
@@ -161,6 +195,34 @@ public class PlayerControl : MonoBehaviour
         inAir = false;
         currentGravity = 0f;
         CurrentGround = newGround;
+        Animator.SetBool("inAir", false);
+    }
 
+    private void OnCollisionExit2D(Collision2D collision)//contact is lost with collider
+    {
+        if(collision.collider.tag == "Enviro")
+        {
+            if(collision.collider == CurrentGround)
+            {
+                if (!inAir)
+                {
+                    inAir = true;
+                    CurrentGround = null;
+                    Animator.SetTrigger("Jump");
+                    Animator.SetBool("inAir", true);
+                }
+            }
+            if(collision.collider == RightWall)
+            {
+                RightWall = null;
+                WallRight = false;
+            }
+
+            if(collision.collider == LeftWall)
+            {
+                LeftWall = null;
+                WallLeft = false;
+            }
+        }
     }
 }
