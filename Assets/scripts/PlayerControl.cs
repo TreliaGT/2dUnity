@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class PlayerControl : MonoBehaviour
 {
@@ -8,6 +9,9 @@ public class PlayerControl : MonoBehaviour
     float HorizontalInput; //Movement
     float LastHorizontalInput; // last frame movement
     public float jumpHoldTime = 0.3f;
+    private bool death = false;
+    bool atExit = false;
+    public CameraFollow followcam;
 
     [Header("Basic Movement")]
     bool moving = false;
@@ -39,18 +43,34 @@ public class PlayerControl : MonoBehaviour
     public bool WallRight = false;
     public bool WallLeft = false;
 
+    [Header("GUI")]
+    public GameObject LevelExitGui;
+    public GameObject GameOverGUI;
 
+    [Header("Score")]
+    public int Score = 0;
+    public Text SorceTxt;
 
     // Start is called before the first frame update
     void Start()
     {
+        UpdateSorce();
         _rigitbody = GetComponent<Rigidbody2D>();
         Animator = GetComponent<Animator>();
+    }
+
+    void UpdateSorce()
+    {
+        SorceTxt.text = "Coins : " + Score.ToString();
     }
 
     // Update is called once per frame
     void Update()
     {
+        if (death)
+        {
+            return;
+        }
         GetInput();
     }
 
@@ -75,8 +95,31 @@ public class PlayerControl : MonoBehaviour
         {
             Jump();
         }
+        if(Input.GetAxis("Vertical") != 0 && atExit)
+        {
+            EndLevel(false);
+        }
         LastHorizontalInput = HorizontalInput;
 
+    }
+
+    void EndLevel(bool isDeath)
+    {
+        if (isDeath)
+        {
+            StartCoroutine(GameOverRoutine());
+        }
+        else
+        {
+            ClearControl();
+            LevelExitGui.SetActive(true);
+        }
+    }
+
+    IEnumerator GameOverRoutine()
+    {
+        yield return new WaitForSeconds(1.5f);
+        GameOverGUI.SetActive(true);
     }
 
     void Flip()
@@ -113,6 +156,10 @@ public class PlayerControl : MonoBehaviour
 
     private void FixedUpdate()
     {
+        if (death)
+        {
+            return;
+        }
         if (inAir)
         {
             SetMovement();
@@ -159,6 +206,30 @@ public class PlayerControl : MonoBehaviour
         }
     }
 
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if(collision.tag == "LevelExit")
+        {
+            atExit = true;
+        }
+        if(collision.tag == "Coin")
+        {
+            int newscore = 0;
+            collision.GetComponent<ScorePickup>().Pickup(out newscore);
+            Score += newscore;
+            UpdateSorce();
+        }
+
+    }
+
+    private void OnTriggerExit2D(Collider2D collision)
+    {
+        if (collision.tag == "LevelExit")
+        {
+            atExit = false;
+        }
+    }
+
     private void OnCollisionEnter2D(Collision2D collision)
     {
        ColliderDistance2D Coll =  collision.collider.Distance(gameObject.GetComponent<Collider2D>());
@@ -187,8 +258,48 @@ public class PlayerControl : MonoBehaviour
                 LeftWall = collision.collider;
             }
 
+        }else if (collision.collider.tag == "Enemy")
+        {
+            if(Coll.normal.y > 0.5f)
+            {
+                inAir = false;
+                Jump();
+                collision.collider.GetComponent<slimeControl>().TakeDamage();
+            }
+            else
+            {
+                Die();
+            }
         }
     }
+
+    void ClearControl()
+    {
+        StopAllCoroutines();
+        death = true;
+        Destroy(_rigitbody);
+        Destroy(GetComponent<Collider2D>());
+        followcam.enabled = false;
+    }
+
+    void Die()
+    {
+        ClearControl();
+        Animator.SetTrigger("Death");
+        StartCoroutine(DeathRoutie());
+        EndLevel(true);
+    }
+
+    IEnumerator DeathRoutie()
+    {
+        yield return new WaitForSeconds(1);
+        while (transform.position.y < 10000)
+        {
+            transform.Translate(new Vector3(0f, 1f, 0f) * Time.deltaTime);
+            yield return null;
+        }
+    }
+
 
     void Ground(Collider2D newGround)
     {

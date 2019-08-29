@@ -20,6 +20,10 @@ public class slimeControl : MonoBehaviour
 
     Coroutine moveRoutine;
 
+    [Header("Damage")]
+    public int health = 2;
+
+
     // Start is called before the first frame update
     void Start()
     {
@@ -90,5 +94,29 @@ public class slimeControl : MonoBehaviour
     void flip (){
         facingRight = !facingRight;
         transform.Rotate(transform.up, 180f);
+    }
+
+    public void TakeDamage()
+    {
+        health -= 1;
+        if(moveRoutine != null)
+        {
+            StopCoroutine(moveRoutine);
+        }
+        if(health > 0)
+        {
+            animator.SetTrigger("Hit");
+        }
+        else
+        {
+            Destroy(_rigidbody2D);
+            Destroy(GetComponent<Collider2D>());
+            animator.SetTrigger("Death");
+        }
+    }
+
+    public void kill()
+    {
+        Destroy(gameObject);
     }
 }
