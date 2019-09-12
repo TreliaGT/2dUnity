@@ -13,6 +13,10 @@ public class PlayerControl : MonoBehaviour
     bool atExit = false;
     public CameraFollow followcam;
 
+    [Header("Spawning")]
+    public CheckPointManager checkpointManager;
+
+
     [Header("Basic Movement")]
     bool moving = false;
     public float movespeed = 5;
@@ -57,6 +61,7 @@ public class PlayerControl : MonoBehaviour
         UpdateSorce();
         _rigitbody = GetComponent<Rigidbody2D>();
         Animator = GetComponent<Animator>();
+        transform.position = checkpointManager.GetCurrentSpawnpoint().position;
     }
 
     void UpdateSorce()
